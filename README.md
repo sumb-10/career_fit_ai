@@ -65,14 +65,17 @@ docs/                    # 기획 및 실습 문서
 - [x] FastAPI 기반 백엔드 서버를 구성하고 `/health`, `/jobs`, `/analyze` 엔드포인트 구현
 - [x] Gemini 2.5 Flash-Lite API 연결을 위한 환경변수 구조와 `MOCK_MODE` 설정
 - [x] 데이터 분석 직무 예시 공고를 `backend/data/jobs.csv`에 정리
-- [ ] 3일차: 데이터 파이프라인 구축
+- [x] 3일차: Pandas 기반 데이터 전처리 파이프라인 구축
+- [x] `backend/data/preprocess.py`에서 CSV 로드, 결측치 처리, 중복 제거, 스킬 키워드 표준화 구현
+- [x] 전처리된 채용 공고 데이터를 SQLite `careerfit.db`의 `jobs` 테이블에 저장
+- [x] RAG 검색 준비를 위해 채용 공고 데이터를 `rag_documents.json` 문서 형식으로 변환
 - [ ] 4일차: RAG 기반 서비스와 React UI 구현
 - [ ] 5일차: Docker 기반 실행 환경 구성 및 포트폴리오 완성
 
 ## 향후 개선
 
-- `jobs.csv` 데이터를 API 응답에 직접 연결
 - ChromaDB를 활용한 공고·공모전 데이터 검색 기능 추가
+- SQLite에 저장된 `jobs` 데이터를 API 응답에 연결
 - `/analyze` 응답에 실제 데이터 출처와 추천 근거 포함
 - React 기반 사용자 입력 화면 및 결과 화면 구현
 - Docker로 백엔드와 프론트엔드 실행 환경 통합
