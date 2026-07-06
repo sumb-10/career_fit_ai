@@ -1,19 +1,31 @@
 function SourceCard({ sources }) {
   if (!sources || sources.length === 0) {
-    return <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-sm text-slate-500">참고한 공고 데이터가 없습니다.</div>;
+    return <div className="empty-source">참고한 공고 데이터가 없습니다.</div>;
   }
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <h2 className="text-lg font-semibold text-slate-700 mb-3">📄 참고한 공고 출처</h2>
-      <div className="space-y-3">
+    <section className="card source-card">
+      <div className="card-header">
+        <div>
+          <h2 className="card-title">참고한 공고 출처</h2>
+          <p className="card-subtitle">AI 답변의 근거가 된 검색 결과입니다.</p>
+        </div>
+        <span className="status-pill">{sources.length}개 출처</span>
+      </div>
+
+      <div className="source-list">
         {sources.map((source, index) => (
-          <div key={index} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-            <p className="text-sm font-medium text-slate-700">{source.company} — {source.title}</p>
-            <p className="text-xs text-slate-500 mt-1">필수 스킬: {source.required_skills || "정보 없음"}</p>
-          </div>
+          <article key={index} className="source-item">
+            <p className="source-title">
+              {source.company || "회사명 없음"} — {source.title || "공고명 없음"}
+            </p>
+            <p className="source-meta">직무: {source.job_type || "정보 없음"}</p>
+            <p className="source-meta">필수 스킬: {source.required_skills || "정보 없음"}</p>
+          </article>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
+
 export default SourceCard;

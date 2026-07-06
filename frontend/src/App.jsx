@@ -76,31 +76,44 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">CareerFit AI</h1>
-        <p className="text-slate-500 text-sm mb-8">취업·공모전 데이터 기반 맞춤형 AI 포트폴리오 코치</p>
-
-        <InputForm onSubmit={handleAnalyze} isLoading={isLoading} />
-
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
-        )}
-
-        {isLoading && (
-          <div className="mt-8 text-center text-slate-500">분석 중입니다...</div>
-        )}
-
-        {result && (
-          <div className="mt-8 space-y-4">
-            <ResultCard answer={result.answer} />
-            {result.sources && result.sources.length > 0 && (
-              <SourceCard sources={result.sources} />
-            )}
+    <main className="app-shell">
+      <div className="app-container">
+        <header className="app-header">
+          <div className="eyebrow">
+            <span className="eyebrow-dot" aria-hidden="true" />
+            RAG 기반 포트폴리오 코치
           </div>
-        )}
+          <h1 className="app-title">CareerFit AI</h1>
+          <p className="app-description">
+            전공, 보유 스킬, 관심 직무를 입력하면 실제 공고 데이터를 근거로
+            다음 포트폴리오 준비 방향을 제안합니다.
+          </p>
+        </header>
+
+        <div className="app-stack">
+          <InputForm onSubmit={handleAnalyze} isLoading={isLoading} />
+
+          {error && (
+            <div className="message error-message" role="alert">{error}</div>
+          )}
+
+          {isLoading && (
+            <div className="message loading-message" role="status" aria-live="polite">
+              <span className="loading-dot" aria-hidden="true" />
+              분석 결과를 실시간으로 작성하는 중입니다...
+            </div>
+          )}
+
+          {result && (
+            <ResultCard answer={result.answer} isLoading={isLoading} />
+          )}
+
+          {result?.sources && result.sources.length > 0 && (
+            <SourceCard sources={result.sources} />
+          )}
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
 

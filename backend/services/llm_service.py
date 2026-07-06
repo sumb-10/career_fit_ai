@@ -4,6 +4,7 @@
 import os
 import json
 import requests
+from pathlib import Path
 from dotenv import load_dotenv
 
 
@@ -11,9 +12,10 @@ from dotenv import load_dotenv
 # 1. 환경변수 로드
 # =========================
 
-# .env 파일을 읽습니다.
+# backend/.env 파일을 읽습니다.
 # [요리] 비유: 비법 소스 보관함을 여는 단계입니다.
-load_dotenv()
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 
 # MOCK_MODE=true이면 실제 LLM API를 호출하지 않습니다.
 # [요리] 비유: 진짜 셰프를 부르지 않고 시식용 샘플 응답만 내는 상태입니다.
@@ -23,6 +25,8 @@ MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 # 예:
 # - gemini-2.5-flash-lite
 # - gemini-2.5-flash
+# - gpt-4o-mini
+# - openai:gpt-5.4-mini
 # - mistral-small-latest
 # - ollama:llama3.2:3b
 # - huggingface:Qwen/Qwen2.5-0.5B-Instruct
@@ -31,6 +35,7 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash-lite")
 # provider별 API Key를 읽습니다.
 # [요리] 비유: 셰프별 출입증입니다.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
@@ -52,6 +57,21 @@ def get_provider_and_model(model_name: str) -> tuple[str, str]:
     Gemini 셰프, Mistral 셰프, Ollama 로컬 셰프, HuggingFace 셰프 중
     누구에게 보낼지 정합니다.
     """
+
+    # 예: openai:gpt-5.4-mini
+    # provider = openai
+    # model = gpt-5.4-mini
+    if model_name.startswith("openai:"):
+        return "openai", model_name.replace("openai:", "", 1)
+
+    # 예: gpt-4o-mini, gpt-5.4-mini, o4-mini
+    if (
+        model_name.startswith("gpt-")
+        or model_name.startswith("o1")
+        or model_name.startswith("o3")
+        or model_name.startswith("o4")
+    ):
+        return "openai", model_name
 
     # 예: ollama:llama3.2:3b
     # provider = ollama
@@ -218,7 +238,104 @@ def stream_gemini(prompt: str):
 
 
 # =========================
-# 6. Mistral 호출
+# 6. OpenAI 호출
+# =========================
+
+def call_openai(prompt: str) -> str:
+    """
+    OpenAI Chat Completions API를 호출합니다.
+
+    [요리] 비유:
+    Gemini 주방이 붐빌 때 OpenAI 셰프에게 같은 주문서를 보내는 단계입니다.
+    """
+
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY가 .env에 없습니다.")
+
+    url = "https://api.openai.com/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": PROVIDER_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+    }
+
+    response = requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        timeout=120,
+    )
+
+    response.raise_for_status()
+    data = response.json()
+
+    return data["choices"][0]["message"]["content"]
+
+
+def stream_openai(prompt: str):
+    """
+    OpenAI Chat Completions API 응답을 chunk 단위로 스트리밍합니다.
+    """
+
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY가 .env에 없습니다.")
+
+    url = "https://api.openai.com/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": PROVIDER_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        "stream": True,
+    }
+
+    with requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        stream=True,
+        timeout=120,
+    ) as response:
+        response.raise_for_status()
+
+        for raw_line in response.iter_lines(decode_unicode=True):
+            if not raw_line or not raw_line.startswith("data: "):
+                continue
+
+            data = raw_line.removeprefix("data: ").strip()
+
+            if data == "[DONE]":
+                break
+
+            chunk = json.loads(data)
+            delta = chunk["choices"][0].get("delta", {})
+            text = delta.get("content")
+
+            if text:
+                yield text
+
+
+# =========================
+# 7. Mistral 호출
 # =========================
 
 def call_mistral(prompt: str) -> str:
@@ -264,7 +381,7 @@ def call_mistral(prompt: str) -> str:
 
 
 # =========================
-# 7. Ollama 호출 — 통합 버전
+# 8. Ollama 호출 — 통합 버전
 # =========================
 
 def call_ollama(prompt: str) -> str:
@@ -321,7 +438,7 @@ def call_ollama(prompt: str) -> str:
 
 
 # =========================
-# 8. HuggingFace 호출
+# 9. HuggingFace 호출
 # =========================
 
 def call_huggingface(prompt: str) -> str:
@@ -362,7 +479,7 @@ def call_huggingface(prompt: str) -> str:
     return message["content"]
 
 # =========================
-# 9. provider에 따라 실제 LLM 호출
+# 10. provider에 따라 실제 LLM 호출
 # =========================
 
 def call_llm(prompt: str) -> str:
@@ -376,6 +493,9 @@ def call_llm(prompt: str) -> str:
 
     if PROVIDER == "gemini":
         return call_gemini(prompt)
+
+    if PROVIDER == "openai":
+        return call_openai(prompt)
 
     if PROVIDER == "mistral":
         return call_mistral(prompt)
@@ -420,10 +540,10 @@ def stream_llm_response(query: str, context_docs: list):
         yield sse_event("done", {"sources": sources})
         return
 
-    if PROVIDER != "gemini":
+    if PROVIDER not in ("gemini", "openai"):
         yield sse_event("error", {
             "message": (
-                "현재 SSE 스트리밍은 Gemini provider에서만 지원합니다. "
+                "현재 SSE 스트리밍은 Gemini 또는 OpenAI provider에서만 지원합니다. "
                 f"현재 provider: {PROVIDER}"
             )
         })
@@ -432,7 +552,12 @@ def stream_llm_response(query: str, context_docs: list):
     try:
         prompt = build_rag_prompt(query, context_docs)
 
-        for chunk_text in stream_gemini(prompt):
+        if PROVIDER == "openai":
+            stream = stream_openai(prompt)
+        else:
+            stream = stream_gemini(prompt)
+
+        for chunk_text in stream:
             for char in chunk_text:
                 yield sse_event("token", {"text": char})
 
@@ -443,7 +568,7 @@ def stream_llm_response(query: str, context_docs: list):
 
 
 # =========================
-# 10. FastAPI 라우터에서 사용할 최종 함수
+# 11. FastAPI 라우터에서 사용할 최종 함수
 # =========================
 
 def get_llm_response(query: str, context_docs: list) -> dict:
