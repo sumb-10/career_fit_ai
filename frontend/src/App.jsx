@@ -1,5 +1,5 @@
 // frontend/src/App.jsx
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputForm from "./components/InputForm";
 import ResultCard from "./components/ResultCard";
 import SourceCard from "./components/SourceCard";
@@ -11,36 +11,68 @@ function App() {
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const eventSourceRef = useRef(null);
 
-  async function handleAnalyze(formData) {
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
+  function handleAnalyze(formData) {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
     setIsLoading(true);
     setError(null);
-    setResult(null);
+    setResult({ answer: "", sources: [] });
 
-    try {
-      const response = await fetch(`${API_BASE}/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          major: formData.major,
-          skills: formData.skills,
-          job_type: formData.jobType,
-        }),
-      });
+    const params = new URLSearchParams({
+      major: formData.major,
+      skills: formData.skills.join(","),
+      job_type: formData.jobType,
+    });
 
-      if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
-      const data = await response.json();
-      setResult(data);
+    const eventSource = new EventSource(`${API_BASE}/analyze/stream?${params.toString()}`);
+    eventSourceRef.current = eventSource;
 
-    } catch (err) {
-      if (err.message.includes("Failed to fetch")) {
-        setError("FastAPI 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.");
-      } else {
-        setError(err.message);
-      }
-    } finally {
+    eventSource.addEventListener("sources", (event) => {
+      const data = JSON.parse(event.data);
+      setResult((prev) => ({
+        answer: prev?.answer || "",
+        sources: data.sources || [],
+      }));
+    });
+
+    eventSource.addEventListener("token", (event) => {
+      const data = JSON.parse(event.data);
+      setResult((prev) => ({
+        answer: `${prev?.answer || ""}${data.text || ""}`,
+        sources: prev?.sources || [],
+      }));
+    });
+
+    eventSource.addEventListener("done", () => {
+      eventSource.close();
+      eventSourceRef.current = null;
       setIsLoading(false);
-    }
+    });
+
+    eventSource.addEventListener("error", (event) => {
+      if (event.data) {
+        const data = JSON.parse(event.data);
+        setError(data.message || "스트리밍 중 오류가 발생했습니다.");
+      } else {
+        setError("FastAPI 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.");
+      }
+
+      eventSource.close();
+      eventSourceRef.current = null;
+      setIsLoading(false);
+    });
   }
 
   return (

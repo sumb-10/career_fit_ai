@@ -2,6 +2,7 @@
 # RAG 연결 + LLM_MODEL 기반 provider 분기 + Ollama 통합 버전
 
 import os
+import json
 import requests
 from dotenv import load_dotenv
 
@@ -195,6 +196,27 @@ def call_gemini(prompt: str) -> str:
     return response.text
 
 
+def stream_gemini(prompt: str):
+    """
+    Gemini 응답을 chunk 단위로 스트리밍합니다.
+    FastAPI의 StreamingResponse에서 SSE data로 감싸서 사용합니다.
+    """
+
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY가 .env에 없습니다.")
+
+    import google.generativeai as genai
+
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel(PROVIDER_MODEL)
+
+    response = model.generate_content(prompt, stream=True)
+
+    for chunk in response:
+        if getattr(chunk, "text", None):
+            yield chunk.text
+
+
 # =========================
 # 6. Mistral 호출
 # =========================
@@ -365,6 +387,59 @@ def call_llm(prompt: str) -> str:
         return call_huggingface(prompt)
 
     raise ValueError(f"지원하지 않는 LLM provider입니다: {PROVIDER}")
+
+
+def sse_event(event: str, data: dict) -> str:
+    """
+    dict 데이터를 SSE 형식 문자열로 변환합니다.
+    """
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def stream_llm_response(query: str, context_docs: list):
+    """
+    RAG 문서와 함께 LLM 응답을 SSE 형식으로 스트리밍합니다.
+
+    이벤트:
+    - sources: 참고 출처 목록
+    - token: 글자 단위 응답
+    - done: 스트리밍 종료
+    - error: 오류 메시지
+    """
+
+    sources = build_sources(context_docs)
+    yield sse_event("sources", {"sources": sources})
+
+    if MOCK_MODE:
+        mock_answer = (
+            f"[MOCK 스트리밍 응답] 질문: '{query}', 참고 문서 수: {len(context_docs)}개. "
+            f"현재 설정 모델: {LLM_MODEL}, provider: {PROVIDER}."
+        )
+        for char in mock_answer:
+            yield sse_event("token", {"text": char})
+        yield sse_event("done", {"sources": sources})
+        return
+
+    if PROVIDER != "gemini":
+        yield sse_event("error", {
+            "message": (
+                "현재 SSE 스트리밍은 Gemini provider에서만 지원합니다. "
+                f"현재 provider: {PROVIDER}"
+            )
+        })
+        return
+
+    try:
+        prompt = build_rag_prompt(query, context_docs)
+
+        for chunk_text in stream_gemini(prompt):
+            for char in chunk_text:
+                yield sse_event("token", {"text": char})
+
+        yield sse_event("done", {"sources": sources})
+
+    except Exception as e:
+        yield sse_event("error", {"message": str(e)})
 
 
 # =========================
