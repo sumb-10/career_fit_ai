@@ -4,7 +4,7 @@ import InputForm from "./components/InputForm";
 import ResultCard from "./components/ResultCard";
 import SourceCard from "./components/SourceCard";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://127.0.0.1:8000";
 // ⚠️ API Key는 절대 여기에 넣지 않습니다
 
 function App() {
