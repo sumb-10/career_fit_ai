@@ -9,7 +9,7 @@
       "deadline": "2026-08-31",
       "source": "jobs.csv",
       "deadline_month": "08",
-      "company_type": "startup",
+      "is_startup": "false",
       "first_saved_date": "2026-07-06"
     },
     "doc_id": "job_"
@@ -24,7 +24,7 @@
       "deadline": "2026-09-15",
       "source": "jobs.csv",
       "deadline_month": "09",
-      "company_type": "startup",
+      "is_startup": "false",
       "first_saved_date": "2026-07-06"
     },
     "doc_id": "job_"
@@ -39,7 +39,7 @@
       "deadline": "2026-09-30",
       "source": "jobs.csv",
       "deadline_month": "09",
-      "company_type": "startup",
+      "is_startup": "false",
       "first_saved_date": "2026-07-06"
     },
     "doc_id": "job_"

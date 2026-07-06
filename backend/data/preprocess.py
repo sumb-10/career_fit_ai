@@ -323,6 +323,10 @@ def convert_to_rag_documents(df: pd.DataFrame) -> list:
         )
 
         # metadata: 검색 결과를 필터링하거나 출처를 표시할 때 사용합니다
+        
+        deadline = str(row.get("deadline", ""))
+        company = str(row.get("company", ""))
+        
         metadata = {
             "id": str(row.get("id", "")),
             "company": str(row.get("company", "")),
@@ -330,9 +334,9 @@ def convert_to_rag_documents(df: pd.DataFrame) -> list:
             "job_type": str(row.get("job_type", "")),
             "deadline": deadline,
             "source": "jobs.csv",
-            "deadline_month": extract_deadline_month(deadline),
-            "company_type": get_company_type(row),
-            "first_saved_date": first_saved_date
+            "deadline_month": deadline[5:7] if len(deadline) >= 7 and deadline[4] == "-" else "",
+            "is_startup": "true" if "스타트업" in company else "false",
+            "first_saved_date": "2026-07-06"
         }
 
         documents.append({
