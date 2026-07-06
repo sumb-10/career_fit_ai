@@ -1,44 +1,28 @@
-from typing import List, Literal
+# backend/routers/analyze.py (RAG 연결 최종 버전)
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
+from typing import List
+from services.rag_service import search_documents
 from services.llm_service import get_llm_response
 
 router = APIRouter()
-
 
 class AnalyzeRequest(BaseModel):
     major: str
     skills: List[str]
     job_type: str
-    experience_years: int = Field(default=0, ge=0)
-    preferred_company_size: Literal[
-        "무관",
-        "대기업",
-        "중견기업",
-        "스타트업",
-    ] = "무관"
-
 
 class AnalyzeResponse(BaseModel):
     answer: str
     sources: List[dict]
 
-
 @router.post("/analyze", response_model=AnalyzeResponse, tags=["Analyze"])
 def analyze_career(request: AnalyzeRequest):
-    query = (
-        f"전공: {request.major}, "
-        f"보유 스킬: {', '.join(request.skills)}, "
-        f"관심 직무: {request.job_type}, "
-        f"경력 연수: {request.experience_years}, "
-        f"선호 기업 규모: {request.preferred_company_size}"
-    )
+    """RAG 기반 역량 분석: ChromaDB 검색 → Gemini 답변 → sources 반환"""
+    query = f"전공: {request.major}, 보유 스킬: {', '.join(request.skills)}, 관심 직무: {request.job_type}"
+    context_docs = search_documents(query, n_results=3)
+    result = get_llm_response(query=query, context_docs=context_docs)
+    return AnalyzeResponse(answer=result["answer"], sources=result["sources"])
 
-    result = get_llm_response(query=query, context_docs=[])
 
-    return AnalyzeResponse(
-        answer=result["answer"],
-        sources=result["sources"]
-    )
