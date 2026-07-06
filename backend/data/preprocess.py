@@ -8,11 +8,11 @@ import pandas as pd
 import sqlite3
 import json
 import os
+from datetime import date
 
 def save_to_sqlite(df: pd.DataFrame, db_path: str) -> None:
     """
     전처리된 DataFrame을 SQLite 데이터베이스에 저장합니다.
-
     요리 비유:
     손질이 끝난 재료를 냉장고(SQLite)에 정리해서 넣는 단계입니다.
     """
@@ -243,41 +243,27 @@ SKILL_NORMALIZATION = {
 def normalize_skills(skills_str: str) -> str:
 
     """
-
     스킬 키워드 문자열을 표준화합니다.
-
     입력: "python, sql, Machine Learning"
-
     출력: "Python, SQL, 머신러닝"
-
     """
 
     if not isinstance(skills_str, str) or not skills_str.strip():
-
         return ""
 
     skills = [s.strip() for s in skills_str.split(",")]
-
     normalized = []
-
     for skill in skills:
-
         # 소문자로 변환해서 사전에서 찾기
-
         lower = skill.lower()
-
         # 사전에 있으면 표준화된 이름으로, 없으면 원래 값 유지
-
         normalized.append(SKILL_NORMALIZATION.get(lower, skill))
-
     return ", ".join(normalized)
 
 def standardize_skills(df: pd.DataFrame) -> pd.DataFrame:
 
     """
-
     required_skills, preferred_skills 컬럼 전체에 표준화를 적용합니다.
-
     """
 
     print("\n=== 스킬 키워드 표준화 ===")
@@ -296,17 +282,38 @@ def standardize_skills(df: pd.DataFrame) -> pd.DataFrame:
     print(df[["title", "required_skills"]].head(3).to_string())
     return df
 
+def extract_deadline_month(deadline: str) -> str:
+    """
+    deadline 값에서 월 정보를 두 자리 문자열로 추출합니다.
+    예: "2026-09-15" -> "09"
+    """
+    deadline = str(deadline)
+    if len(deadline) >= 7 and deadline[4] == "-":
+        return deadline[5:7]
+    return ""
+
+def get_company_type(row: pd.Series) -> str:
+    """
+    company_type 컬럼이 있으면 사용하고, 없으면 기본값으로 채웁니다.
+    """
+    company_type = row.get("company_type", "startup")
+    if pd.isna(company_type) or not str(company_type).strip():
+        return "startup"
+    return str(company_type)
+
 def convert_to_rag_documents(df: pd.DataFrame) -> list:
     """
     DataFrame의 각 행을 RAG 검색에 적합한 자연어 문서로 변환합니다.
-
     요리 비유:
     냉장고의 재료 목록을 셰프가 바로 읽을 수 있는 레시피 카드로 변환합니다.
     """
     print("\n=== RAG 문서 변환 ===")
     documents = []
+    first_saved_date = date.today().isoformat()
 
     for _, row in df.iterrows():
+        deadline = str(row.get("deadline", ""))
+
         # 자연어 문서 텍스트 생성
         doc_text = (
             f"{row.get('company', '')}에서 {row.get('title', '')}를 채용합니다. "
@@ -321,8 +328,11 @@ def convert_to_rag_documents(df: pd.DataFrame) -> list:
             "company": str(row.get("company", "")),
             "title": str(row.get("title", "")),
             "job_type": str(row.get("job_type", "")),
-            "deadline": str(row.get("deadline", "")),
-            "source": "jobs.csv"
+            "deadline": deadline,
+            "source": "jobs.csv",
+            "deadline_month": extract_deadline_month(deadline),
+            "company_type": get_company_type(row),
+            "first_saved_date": first_saved_date
         }
 
         documents.append({
@@ -363,5 +373,4 @@ if __name__ == "__main__":
     rag_docs = convert_to_rag_documents(df_jobs)
     save_rag_documents(rag_docs, RAG_JSON)
     print(f"\n✅ 전처리 완료: 최종 {len(df_jobs)}행, RAG 문서 {len(rag_docs)}개")
-
 
