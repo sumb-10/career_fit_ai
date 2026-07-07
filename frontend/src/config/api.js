@@ -1,5 +1,7 @@
+const runtimeApiBaseUrl = globalThis.window?.__APP_CONFIG__?.API_BASE_URL;
+
 export const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+  runtimeApiBaseUrl || import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 
 export function buildApiUrl(path) {

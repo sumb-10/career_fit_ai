@@ -16,7 +16,8 @@ FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 EXPOSE 10000
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["sh", "/docker-entrypoint.sh"]

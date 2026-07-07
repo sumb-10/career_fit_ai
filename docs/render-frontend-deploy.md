@@ -71,8 +71,9 @@ FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:30
 2. `nginx:1.27-alpine` 단계에서 `dist` 정적 파일을 서빙합니다.
 3. Nginx는 `frontend/nginx.conf` 설정으로 SPA 라우팅을 지원합니다.
 4. 컨테이너는 Render Web Service에서 사용할 수 있도록 `10000` 포트를 엽니다.
+5. 컨테이너 시작 시 `docker-entrypoint.sh`가 `VITE_API_BASE_URL` 값을 읽어 `/env.js`를 생성합니다.
 
-Render의 Docker 배포는 저장소의 Dockerfile을 직접 빌드할 수 있습니다. 이 프로젝트는 monorepo 구조이므로 프론트엔드 서비스의 Root Directory를 `frontend`로 설정합니다. Render는 Docker 서비스의 환경변수를 빌드 인자로도 사용할 수 있으므로, Vite 빌드 시 `VITE_API_BASE_URL`을 주입할 수 있습니다.
+Render의 Docker 배포는 저장소의 Dockerfile을 직접 빌드할 수 있습니다. 이 프로젝트는 monorepo 구조이므로 프론트엔드 서비스의 Root Directory를 `frontend`로 설정합니다. Vite 환경변수는 기본적으로 빌드 시점에 고정되므로, 이 프로젝트는 Render 런타임 환경변수를 `/env.js`로 주입해 배포 후에도 백엔드 URL을 정확히 읽도록 구성합니다.
 
 참고 문서:
 
@@ -145,6 +146,7 @@ https://your-frontend-service.onrender.com
 브라우저에서 확인할 것:
 
 - 프론트엔드 화면이 뜨는가?
+- `https://your-frontend-service.onrender.com/env.js`에 접속했을 때 Render 백엔드 URL이 들어 있는가?
 - 입력 폼에 전공, 스킬, 관심 직무를 입력할 수 있는가?
 - 분석 요청 시 결과가 표시되는가?
 - 브라우저 개발자 도구 Network 탭에서 백엔드 요청이 Render 백엔드 URL로 나가는가?
