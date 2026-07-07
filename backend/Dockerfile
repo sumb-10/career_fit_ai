@@ -19,6 +19,11 @@ RUN pip install --no-cache-dir --retries 5 --timeout 60 -r requirements.txt
 # .env 파일은 복사하지 않습니다 — docker run 시 환경변수로 주입
 COPY . .
 
+# 5-1. RAG 문서 생성 — git에 없는 rag_documents.json을 빌드 시 jobs.csv에서 생성
+RUN python data/preprocess.py
+# 5-2. ChromaDB 웜업 — 임베딩 모델(79MB) 다운로드와 문서 적재를 빌드에 구워둠
+RUN python -c "from services.rag_service import get_or_create_collection; ..."
+
 # 6. 포트 선언
 # 로컬 기본값은 8000번, Render에서는 PORT 환경변수를 사용
 EXPOSE 8000
