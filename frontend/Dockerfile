@@ -16,8 +16,10 @@ FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 10000
 
-CMD ["sh", "/docker-entrypoint.sh"]
+ENTRYPOINT []
+CMD ["/app/docker-entrypoint.sh"]
