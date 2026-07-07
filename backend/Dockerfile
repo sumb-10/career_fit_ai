@@ -20,13 +20,15 @@ RUN pip install --no-cache-dir --retries 5 --timeout 60 -r requirements.txt
 COPY . .
 
 # 6. 포트 선언
-# 컨테이너 내부에서 8000번 포트를 사용한다고 선언
+# 로컬 기본값은 8000번, Render에서는 PORT 환경변수를 사용
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
+  CMD python -c "import os, urllib.request; port=os.getenv('PORT', '8000'); urllib.request.urlopen(f'http://127.0.0.1:{port}/health')" || exit 1
 
 # 7. 실행 명령
 # docker run 시 자동으로 실행되는 명령어
-RUN useradd --create-home --shell /bin/bash appuser
+RUN useradd --create-home --shell /bin/bash appuser \
+    && mkdir -p /app/chroma_db \
+    && chown -R appuser:appuser /app
 USER appuser
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
