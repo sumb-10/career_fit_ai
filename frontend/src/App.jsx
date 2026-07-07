@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import InputForm from "./components/InputForm";
 import ResultCard from "./components/ResultCard";
 import SourceCard from "./components/SourceCard";
+import { API_ENDPOINTS } from "./config/api";
 
-const API_BASE = "http://127.0.0.1:8000";
 // ⚠️ API Key는 절대 여기에 넣지 않습니다
 
 function App() {
@@ -36,7 +36,7 @@ function App() {
       job_type: formData.jobType,
     });
 
-    const eventSource = new EventSource(`${API_BASE}/analyze/stream?${params.toString()}`);
+    const eventSource = new EventSource(`${API_ENDPOINTS.analyzeStream}?${params.toString()}`);
     eventSourceRef.current = eventSource;
 
     eventSource.addEventListener("sources", (event) => {

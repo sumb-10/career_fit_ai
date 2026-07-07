@@ -1,9 +1,30 @@
-# backend/main.py
+import os
 
+# backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import health, jobs, analyze
+
+DEFAULT_FRONTEND_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+
+def get_frontend_origins() -> list[str]:
+    origins = os.getenv("FRONTEND_ORIGINS", "")
+
+    if not origins:
+        return DEFAULT_FRONTEND_ORIGINS
+
+    return [
+        origin.strip().rstrip("/")
+        for origin in origins.split(",")
+        if origin.strip()
+    ]
 
 app = FastAPI(
     title="CareerFit AI",
@@ -13,7 +34,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=get_frontend_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
